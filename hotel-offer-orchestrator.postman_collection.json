@@ -1,0 +1,162 @@
+{
+  "info": {
+    "_postman_id": "hotel-offer-orchestrator-collection",
+    "name": "Hotel Offer Orchestrator API",
+    "description": "Postman Collection for testing Hotel Offer Orchestrator endpoints, including deduplication, price filtering, mock supplier APIs, error handling, and health check.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. GET Hotels - Delhi (Overlapping / Deduplication)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/hotels?city=delhi",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hotels"],
+          "query": [
+            {
+              "key": "city",
+              "value": "delhi"
+            }
+          ]
+        },
+        "description": "Tests workflow deduplication: calls Supplier A & B, deduplicates by name, selects cheaper price."
+      },
+      "response": []
+    },
+    {
+      "name": "2. GET Hotels - Delhi with Price Filter (minPrice & maxPrice)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/hotels?city=delhi&minPrice=5000&maxPrice=6000",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hotels"],
+          "query": [
+            {
+              "key": "city",
+              "value": "delhi"
+            },
+            {
+              "key": "minPrice",
+              "value": "5000"
+            },
+            {
+              "key": "maxPrice",
+              "value": "6000"
+            }
+          ]
+        },
+        "description": "Retrieves hotels filtered by price directly using Redis ZSET (ZRANGEBYSCORE)."
+      },
+      "response": []
+    },
+    {
+      "name": "3. GET Hotels - City with No Results",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/hotels?city=nonexistentcity",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "hotels"],
+          "query": [
+            {
+              "key": "city",
+              "value": "nonexistentcity"
+            }
+          ]
+        },
+        "description": "Queries a city that neither supplier has, expecting an empty array []."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Health Check (/health)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Reports overall health and individual status of Supplier A and Supplier B."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Mock Supplier A",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/supplierA/hotels?city=delhi",
+          "host": ["{{baseUrl}}"],
+          "path": ["supplierA", "hotels"],
+          "query": [
+            {
+              "key": "city",
+              "value": "delhi"
+            }
+          ]
+        },
+        "description": "Directly queries mock Supplier A endpoint."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Mock Supplier B",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/supplierB/hotels?city=delhi",
+          "host": ["{{baseUrl}}"],
+          "path": ["supplierB", "hotels"],
+          "query": [
+            {
+              "key": "city",
+              "value": "delhi"
+            }
+          ]
+        },
+        "description": "Directly queries mock Supplier B endpoint."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Simulate Supplier Failure (Bonus)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"supplierA\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/simulate-failure",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "simulate-failure"]
+        },
+        "description": "Simulate Supplier A going down to test healthcheck and fallback handling."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

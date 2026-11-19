@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Redis Cache & Filter Store
+  redis:
+    image: redis:7-alpine
+    container_name: hotel-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Temporal Dev Server (Self-contained single binary with UI)
+  temporal:
+    image: temporalio/admin-tools:latest
+    container_name: hotel-temporal
+    entrypoint: ["temporal", "server", "start-dev", "--ip", "0.0.0.0", "--ui-port", "8233", "--port", "7233"]
+    ports:
+      - "7233:7233" # Temporal gRPC frontend
+      - "8233:8233" # Temporal Web UI
+    restart: unless-stopped
+
+  # Express API Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotel-api
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - TEMPORAL_ADDRESS=temporal:7233
+      - INTERNAL_API_URL=http://api:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    restart: unless-stopped
+
+  # Temporal Worker Service
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotel-worker
+    command: ["node", "dist/worker.js"]
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - TEMPORAL_ADDRESS=temporal:7233
+      - INTERNAL_API_URL=http://api:3000
+    depends_on:
+      api:
+        condition: service_started
+      temporal:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
